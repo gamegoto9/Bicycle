@@ -67,7 +67,7 @@ public class MainFragment extends Fragment {
         viewPager.setAdapter(adapter);
 
         slideTabLayout = (NavigationTabStrip) rootView.findViewById(R.id.slideTabLayout);
-        slideTabLayout.setTitles("RECORD","HISTORY");
+        slideTabLayout.setTitles("MAP","RECORD","HISTORY");
         slideTabLayout.setTabIndex(0, true);
         slideTabLayout.setTitleSize(15);
         slideTabLayout.setStripColor(Color.GREEN);

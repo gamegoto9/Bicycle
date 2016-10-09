@@ -5,7 +5,10 @@ import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentStatePagerAdapter;
 
 import com.devdrunk.bicycle.fragment.HistoryFragment;
+import com.devdrunk.bicycle.fragment.MapFragment;
 import com.devdrunk.bicycle.fragment.RecordFragment;
+
+import java.lang.annotation.Retention;
 
 /**
  * Created by CRRU0001 on 06/10/2559.
@@ -13,7 +16,7 @@ import com.devdrunk.bicycle.fragment.RecordFragment;
 
 public class PagerMenuAdapter extends FragmentStatePagerAdapter {
 
-    private final int PAGE_NUM = 2;
+    private final int PAGE_NUM = 3;
     public PagerMenuAdapter(FragmentManager fm) {
         super(fm);
     }
@@ -22,8 +25,10 @@ public class PagerMenuAdapter extends FragmentStatePagerAdapter {
     public Fragment getItem(int position) {
         switch (position){
             case 0:
-                return RecordFragment.newInstance();
+                return MapFragment.newInstance();
             case 1:
+                return RecordFragment.newInstance();
+            case 2:
                 return HistoryFragment.newInstance();
             default:
                 return null;
