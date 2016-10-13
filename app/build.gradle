@@ -25,9 +25,12 @@ dependencies {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
     compile 'com.android.support:appcompat-v7:24.2.1'
+    compile 'com.android.support:design:23.1.1'
     testCompile 'junit:junit:4.12'
     compile 'com.github.devlight.navigationtabstrip:navigationtabstrip:+'
     compile project(':TheCheeseLibrary')
     compile 'com.google.android.gms:play-services-maps:9.6.1'
+    compile 'com.akexorcist:googledirectionlibrary:1.0.4'
+
 
 }

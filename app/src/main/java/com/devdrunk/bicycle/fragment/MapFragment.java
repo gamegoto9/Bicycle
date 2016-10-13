@@ -2,15 +2,25 @@ package com.devdrunk.bicycle.fragment;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
+import android.support.v4.media.session.MediaSessionCompat;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.ImageButton;
 
+import com.akexorcist.googledirection.DirectionCallback;
+import com.akexorcist.googledirection.GoogleDirection;
+import com.akexorcist.googledirection.constant.TransportMode;
+import com.akexorcist.googledirection.model.Direction;
+import com.akexorcist.googledirection.util.DirectionConverter;
 import com.devdrunk.bicycle.R;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -20,6 +30,8 @@ import com.google.android.gms.maps.UiSettings;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import java.util.ArrayList;
+
 
 /**
  * Created by nuuneoi on 11/16/2014.
@@ -28,6 +40,11 @@ import com.google.android.gms.maps.model.MarkerOptions;
 public class MapFragment extends Fragment implements OnMapReadyCallback {
 
     GoogleMap mMap;
+    private ImageButton btnRequestDirection;
+    private String serverKey = "AIzaSyBs27nAj-61dBENpuYORsgqci0Ljw67GTA";
+    private LatLng camera = new LatLng(37.782437, -122.4281893);
+    private LatLng origin = new LatLng(37.7849569, -122.4068855);
+    private LatLng destination = new LatLng(37.7814432, -122.4460177);
 
     public MapFragment() {
         super();
@@ -75,6 +92,16 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
 //                .findFragmentById(R.id.map);
 
 
+        btnRequestDirection = (ImageButton) rootView.findViewById(R.id.btn_search);
+        btnRequestDirection.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                int id = view.getId();
+                if(id == R.id.btn_search){
+                    requestDirection();
+                }
+            }
+        });
 
         SupportMapFragment mapFragment = (SupportMapFragment) this.getChildFragmentManager()
                 .findFragmentById(R.id.map);
@@ -84,6 +111,34 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
 
 
 
+    }
+
+    public void requestDirection() {
+        Snackbar.make(btnRequestDirection, "Direction Requesting...", Snackbar.LENGTH_SHORT).show();
+        GoogleDirection.withServerKey(serverKey)
+                .from(origin)
+                .to(destination)
+                .transportMode(TransportMode.DRIVING)
+                .execute(new DirectionCallback() {
+                    @Override
+                    public void onDirectionSuccess(Direction direction, String rawBody) {
+                        Snackbar.make(btnRequestDirection, "Success with status : " + direction.getStatus(), Snackbar.LENGTH_SHORT).show();
+                        if (direction.isOK()) {
+                            mMap.addMarker(new MarkerOptions().position(origin));
+                            mMap.addMarker(new MarkerOptions().position(destination));
+
+                            ArrayList<LatLng> directionPositionList = direction.getRouteList().get(0).getLegList().get(0).getDirectionPoint();
+                            mMap.addPolyline(DirectionConverter.createPolyline(getContext(), directionPositionList, 5, Color.RED));
+
+                            btnRequestDirection.setVisibility(View.GONE);
+                        }
+                    }
+
+                    @Override
+                    public void onDirectionFailure(Throwable t) {
+                        Snackbar.make(btnRequestDirection, t.getMessage(), Snackbar.LENGTH_LONG).show();
+                    }
+                });
     }
 
     private void checkLocationPermission() {
@@ -122,6 +177,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
         mMap = googleMap;
 
 
+
         UiSettings uis = mMap.getUiSettings();
         uis.setZoomControlsEnabled(true);
         uis.setZoomGesturesEnabled(true);
@@ -134,19 +190,23 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
 
 
         // Add a marker in Sydney and move the camera
-        LatLng sydney = new LatLng(-34, 151);
+        LatLng sydney = origin;
         mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
         mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
+        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(camera, 13));
 
         if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             //User has previously accepted this permission
             if (ActivityCompat.checkSelfPermission(getContext(),
                     Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                 mMap.setMyLocationEnabled(true);
+
+
             }
         } else {
             //Not in api-23, no need to prompt
             mMap.setMyLocationEnabled(true);
         }
+
     }
 }
