@@ -1,7 +1,9 @@
 package com.devdrunk.bicycle.fragment;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
@@ -14,25 +16,36 @@ import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.media.session.MediaSessionCompat;
+import android.text.Html;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.akexorcist.googledirection.DirectionCallback;
 import com.akexorcist.googledirection.GoogleDirection;
+import com.akexorcist.googledirection.constant.Language;
 import com.akexorcist.googledirection.constant.TransportMode;
+import com.akexorcist.googledirection.constant.Unit;
 import com.akexorcist.googledirection.model.Direction;
 import com.akexorcist.googledirection.util.DirectionConverter;
 import com.devdrunk.bicycle.R;
+import com.google.android.gms.common.GooglePlayServicesNotAvailableException;
+import com.google.android.gms.common.GooglePlayServicesRepairableException;
+import com.google.android.gms.location.places.Place;
+import com.google.android.gms.location.places.ui.PlacePicker;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.UiSettings;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
@@ -50,7 +63,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
     private String serverKey = "AIzaSyBs27nAj-61dBENpuYORsgqci0Ljw67GTA";
     private LatLng camera = new LatLng(37.782437, -122.4281893);
     private LatLng origin;
-    private LatLng destination = new LatLng(19.97742247, 99.85934973);
+    private LatLng destination;
 
     LocationListener listener;
     LocationManager lm;
@@ -58,7 +71,10 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
     LatLng coordinate;
     boolean isNetwork;
     boolean isGPS;
+    boolean isPlace = false;
     Marker mMarker;
+
+    String title_destination;
 
     private static final int PLACE_PICKER_REQUEST = 1;
 
@@ -90,12 +106,13 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
                              Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.fragment_map, container, false);
         initInstances(rootView, savedInstanceState);
+        Log.i("CreateView : ","True");
         return rootView;
+
     }
 
     private void init(Bundle savedInstanceState) {
         // Init Fragment level's variable(s) here
-
 
     }
 
@@ -110,17 +127,32 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
                 if(id == R.id.btn_search){
 
 
-                    requestDirection();
+                    //requestDirection();
                 }
             }
         });
 
-
-
-
         SupportMapFragment mapFragment = (SupportMapFragment) this.getChildFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+
+        if(!isPlace){
+
+            try {
+                PlacePicker.IntentBuilder intentBuilder =
+                        new PlacePicker.IntentBuilder();
+
+                Intent intent = intentBuilder.build(getActivity());
+                startActivityForResult(intent, PLACE_PICKER_REQUEST);
+
+            } catch (GooglePlayServicesRepairableException
+                    | GooglePlayServicesNotAvailableException e) {
+                e.printStackTrace();
+            }
+
+        }
+
+
 
         listener = new LocationListener() {
             public void onLocationChanged(Location loc) {
@@ -132,16 +164,18 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
                 origin = new LatLng(lat, lng);
 
 
-                Toast.makeText(getContext(),"Lat : "+lat + "Lng : "+lng ,
-                        Toast.LENGTH_LONG).show();
+//                Toast.makeText(getContext(),"Lat : "+lat + "Lng : "+lng ,
+//                        Toast.LENGTH_LONG).show();
+
+
 
                 if(mMarker != null)
                     mMarker.remove();
 
-                mMarker = mMap.addMarker(new MarkerOptions()
-                        .position(new LatLng(lat, lng)));
+               //mMarker = mMap.addMarker(new MarkerOptions()
+                //        .position(new LatLng(lat, lng)));
                 mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(
-                        coordinate, 16));
+                        coordinate, 18));
             }
 
             public void onStatusChanged(String provider, int status
@@ -156,6 +190,33 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
 
 
 
+
+
+    }
+    @Override
+    public void onActivityResult(int requestCode,
+                                 int resultCode, Intent data) {
+
+        if (requestCode == PLACE_PICKER_REQUEST
+                && resultCode == Activity.RESULT_OK) {
+
+            final Place place = PlacePicker.getPlace(getContext(), data);
+            title_destination = (String) place.getName();
+            final CharSequence address = place.getAddress();
+            final LatLng latlng = place.getLatLng();
+            String attributions = (String) place.getAttributions();
+            if (attributions == null) {
+                attributions = "";
+            }
+
+            destination = latlng;
+            isPlace = true;
+
+            requestDirection();
+
+        } else {
+            super.onActivityResult(requestCode, resultCode, data);
+        }
     }
 
 
@@ -165,13 +226,23 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
                     .from(origin)
                     .to(destination)
                     .transportMode(TransportMode.DRIVING)
+                    .language(Language.THAI)
+                    .unit(Unit.METRIC)
                     .execute(new DirectionCallback() {
                         @Override
                         public void onDirectionSuccess(Direction direction, String rawBody) {
                             //Snackbar.make(btnRequestDirection, "Success with status : " + direction.getStatus(), Snackbar.LENGTH_SHORT).show();
                             if (direction.isOK()) {
-                                mMap.addMarker(new MarkerOptions().position(origin));
-                                mMap.addMarker(new MarkerOptions().position(destination));
+                                mMap.addMarker(new MarkerOptions().position(origin).icon(BitmapDescriptorFactory
+                                .defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
+                                        .title("My Location Start!"));
+
+
+
+                                mMap.addMarker(new MarkerOptions().position(destination)
+                                        .icon(BitmapDescriptorFactory
+                                .defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
+                                        .title(title_destination));
 
                                 ArrayList<LatLng> directionPositionList = direction.getRouteList().get(0).getLegList().get(0).getDirectionPoint();
                                 mMap.addPolyline(DirectionConverter.createPolyline(getContext(), directionPositionList, 5, Color.RED));
@@ -227,8 +298,10 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
         outState.putParcelable("start",origin);
         outState.putParcelable("end",destination);
         outState.putString("keyMap",serverKey);
+        outState.putBoolean("isPlace",isPlace);
+        outState.putString("title_des",title_destination);
 
-
+        Log.i("SAVE : ","True");
 
     }
 
@@ -241,8 +314,12 @@ public class MapFragment extends Fragment implements OnMapReadyCallback {
         origin = savedInstanceState.getParcelable("start");
         destination = savedInstanceState.getParcelable("end");
         serverKey = savedInstanceState.getString("keyMap");
+        isPlace = savedInstanceState.getBoolean("isPlace");
+        title_destination = savedInstanceState.getString("title_des");
 
         requestDirection();
+
+        Log.i("Restore : ","True");
 
     }
 
